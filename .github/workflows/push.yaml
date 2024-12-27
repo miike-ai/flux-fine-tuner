@@ -1,50 +1,39 @@
-name: Push
+name: Push Trainer to Replicate
 
 on:
   workflow_dispatch:
-    branches: [main]
     inputs:
-      no_push:
-        description: 'Test only, without pushing to prod'
-        type: boolean
-        default: true
+      model_name:
+        description: "Enter the trainer model name, e.g., 'miike-ai/flux-schnell-lora-trainer'"
+        required: false  # Optional if you want a default
 
 jobs:
-  cog-safe-push:
-    runs-on: ubuntu-latest-4-cores
+  push_trainer:
+    name: Push Trainer to Replicate
+    runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
-      with:
-        submodules: "recursive"
+      - name: Free Disk Space
+        uses: jlumbroso/free-disk-space@v1.3.1
+        with:
+          tool-cache: false
+          docker-images: false
 
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.12'
+      - name: Checkout Repository
+        uses: actions/checkout@v4
 
-    - name: Install Cog
-      run: |
-        sudo curl -o /usr/local/bin/cog -L "https://github.com/replicate/cog/releases/latest/download/cog_$(uname -s)_$(uname -m)"
-        sudo chmod +x /usr/local/bin/cog
+      - name: Set up Cog
+        uses: replicate/setup-cog@v2
+        with:
+          token: ${{ secrets.REPLICATE_API_TOKEN }}
 
-    - name: cog login
-      run: |
-        echo ${{ secrets.COG_TOKEN }} | cog login --token-stdin
+      - name: Build Trainer Model
+        run: cog build
 
-    - name: Install cog-safe-push
-      run: |
-        pip install git+https://github.com/replicate/cog-safe-push.git
+      - name: Push Trainer to Replicate
+        run: cog push r8.im/${{ inputs.model_name || 'miike-ai/flux-schnell-lora-trainer' }}
 
-    - name: "Inject secrets into cog-safe-push.yaml"
-      env:
-        HF_TOKEN: ${{ secrets.HF_WRITE_TO_TEST_FINE_TUNER_INTEGRATION }}
-      run: |
-        envsubst < cog-safe-push.yaml.tpl > cog-safe-push.yaml
-
-    - name: Run cog-safe-push to test the trainer and predictor and optionally push to production
-      env:
-        ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-        REPLICATE_API_TOKEN: ${{ secrets.REPLICATE_API_TOKEN }}
-      run: |
-        cog-safe-push -vv ${{ github.event.inputs.no_push == 'true' && '--no-push' || '' }}
+      - name: Clean Up
+        run: |
+          echo "Cleaning up temporary files"
+          rm -rf /tmp/*
