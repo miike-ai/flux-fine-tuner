@@ -32,7 +32,7 @@ from layer_match import match_layers_to_optimize, available_layers_to_optimize
 
 
 JOB_NAME = "flux_train_replicate"
-WEIGHTS_PATH = Path("./FLUX.1-dev")
+WEIGHTS_PATH = Path("./FLUX.1-schnell")
 INPUT_DIR = Path("input_images")
 OUTPUT_DIR = Path("output")
 JOB_DIR = OUTPUT_DIR / JOB_NAME
@@ -281,6 +281,7 @@ def train(
                         },
                         "model": {
                             "name_or_path": str(WEIGHTS_PATH),
+                            "assistant_lora_path": "ostris/FLUX.1-schnell-training-adapter",
                             "is_flux": True,
                             "quantize": True,
                         },
@@ -297,8 +298,8 @@ def train(
                             "neg": "",
                             "seed": 42,
                             "walk_seed": True,
-                            "guidance_scale": 3.5,
-                            "sample_steps": 28,
+                            "guidance_scale": 1,
+                            "sample_steps": 4,
                         },
                     }
                 ],
@@ -504,7 +505,7 @@ def download_weights():
             [
                 "pget",
                 "-xf",
-                "https://weights.replicate.delivery/default/black-forest-labs/FLUX.1-dev/files.tar",
+                "https://weights.replicate.delivery/default/black-forest-labs/FLUX.1-schnell/files.tar",
                 str(WEIGHTS_PATH.parent),
             ]
         )
